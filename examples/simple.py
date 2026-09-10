@@ -1,7 +1,7 @@
 """
 Setup:
 1. Get your API key from https://cloud.browser-use.com/new-api-key
-2. Set environment variable: export BROWSER_USE_API_KEY="your-key"
+2. Set environment variable: export BROWSER_USE_API_KEY="bu_cPX70LUMiIUN2C9wNqdJoQ2uWaRZXoWumbd27ljJKas"
 """
 
 from dotenv import load_dotenv
