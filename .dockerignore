@@ -2,6 +2,7 @@ docs/
 static/
 .claude/
 .github/
+.git/
 
 # Cache files
 .DS_Store
