@@ -3542,20 +3542,33 @@ class Agent(Generic[Context, AgentStructuredOutput]):
 		3. XPATH: XPath string match (structural position in DOM)
 		4. AX_NAME: Accessible name match from accessibility tree (robust for dynamic menus)
 		5. ATTRIBUTE: Unique attribute match (name, id, aria-label) for old history files
+
+		Security: When historical_element has a frame_id, matching is restricted to that frame only
+		to prevent cross-frame action redirection attacks.
 		"""
 		if not historical_element or not browser_state_summary.dom_state.selector_map:
 			return action
 
 		selector_map = browser_state_summary.dom_state.selector_map
 		selector_items = list(selector_map.items())
-		if historical_element.frame_id:
-			same_frame_items = [
-				(index, element) for index, element in selector_items if element.frame_id == historical_element.frame_id
-			]
-			if same_frame_items:
-				selector_items = same_frame_items + [
-					(index, element) for index, element in selector_items if element.frame_id != historical_element.frame_id
-				]
+		
+		# Security: Restrict matching to the historical element's frame to prevent cross-frame redirection
+		# This applies whether the historical element is in the main frame (frame_id=None) or an iframe
+		historical_frame_id = historical_element.frame_id
+		same_frame_items = [
+			(index, element) for index, element in selector_items if element.frame_id == historical_frame_id
+		]
+		if not same_frame_items:
+			# No elements in the historical frame - cannot safely match
+			frame_desc = f'frame {historical_frame_id}' if historical_frame_id else 'main frame'
+			self.logger.info(
+				f'🔒 Historical element was in {frame_desc}, but no interactive elements found there now. '
+				f'Refusing cross-frame match for security.'
+			)
+			return None
+		# Only search within the same frame
+		selector_items = same_frame_items
+		
 		highlight_index: int | None = None
 		match_level: MatchLevel | None = None
 
