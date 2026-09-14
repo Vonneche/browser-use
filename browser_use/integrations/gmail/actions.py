@@ -15,9 +15,6 @@ from .service import GmailService
 
 logger = logging.getLogger(__name__)
 
-# Global Gmail service instance - initialized when actions are registered
-_gmail_service: GmailService | None = None
-
 
 class GetRecentEmailsParams(BaseModel):
 	"""Parameters for getting recent emails"""
@@ -34,15 +31,14 @@ def register_gmail_actions(tools: Tools, gmail_service: GmailService | None = No
 	    gmail_service: Optional pre-configured Gmail service instance
 	    access_token: Optional direct access token (alternative to file-based auth)
 	"""
-	global _gmail_service
-
-	# Use provided service or create a new one with access token if provided
+	# Create a service instance specific to this registration
+	# Each Tools instance gets its own captured service via closure
 	if gmail_service:
-		_gmail_service = gmail_service
+		service_instance = gmail_service
 	elif access_token:
-		_gmail_service = GmailService(access_token=access_token)
+		service_instance = GmailService(access_token=access_token)
 	else:
-		_gmail_service = GmailService()
+		service_instance = GmailService()
 
 	@tools.registry.action(
 		description='Get recent emails from the mailbox with a keyword to retrieve verification codes, OTP, 2FA tokens, magic links, or any recent email content. Keep your query a single keyword.',
@@ -51,13 +47,14 @@ def register_gmail_actions(tools: Tools, gmail_service: GmailService | None = No
 	async def get_recent_emails(params: GetRecentEmailsParams) -> ActionResult:
 		"""Get recent emails from the last 5 minutes with full content"""
 		try:
-			if _gmail_service is None:
+			# Use the service instance captured at registration time
+			if service_instance is None:
 				raise RuntimeError('Gmail service not initialized')
 
 			# Ensure authentication
-			if not _gmail_service.is_authenticated():
+			if not service_instance.is_authenticated():
 				logger.info('📧 Gmail not authenticated, attempting authentication...')
-				authenticated = await _gmail_service.authenticate()
+				authenticated = await service_instance.authenticate()
 				if not authenticated:
 					return ActionResult(
 						extracted_content='Failed to authenticate with Gmail. Please ensure Gmail credentials are set up properly.',
@@ -77,7 +74,7 @@ def register_gmail_actions(tools: Tools, gmail_service: GmailService | None = No
 			logger.info(f'🔍 Gmail search query: {query}')
 
 			# Get emails
-			emails = await _gmail_service.get_recent_emails(max_results=max_results, query=query, time_filter=time_filter)
+			emails = await service_instance.get_recent_emails(max_results=max_results, query=query, time_filter=time_filter)
 
 			if not emails:
 				query_info = f" matching '{params.keyword}'" if params.keyword.strip() else ''
