@@ -21,26 +21,34 @@ jobs:
       - name: Trigger Evaluation settings
         id: trigger
         continue-on-error: true
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
+          EVAL_TEST_CASE: ${{ vars.EVAL_TEST_CASE }}
+          EVAL_PLATFORM_URL: ${{ secrets.EVAL_PLATFORM_URL }}
+          EVAL_PLATFORM_KEY: ${{ secrets.EVAL_PLATFORM_KEY }}
+          BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
+          GITHUB_REPO: ${{ github.repository }}
         run: |
-          echo "🚀 Triggering evaluation - PR #${{ github.event.pull_request.number }}"
-          echo "Commit: ${{ github.event.pull_request.head.sha }}"
+          echo "🚀 Triggering evaluation - PR #$PR_NUMBER"
+          echo "Commit: $COMMIT_SHA"
 
           # You can customize the test here
-          TEST_CASE="${{ vars.EVAL_TEST_CASE }}"
+          TEST_CASE="$EVAL_TEST_CASE"
           if [ -z "$TEST_CASE" ]; then
             TEST_CASE="InteractionTasks_v8"
           fi
 
           response=$(curl -X POST \
-            "${{ secrets.EVAL_PLATFORM_URL }}/api/triggerInteractionTasksV6" \
-            -H "Authorization: Bearer ${{ secrets.EVAL_PLATFORM_KEY }}" \
+            "$EVAL_PLATFORM_URL/api/triggerInteractionTasksV6" \
+            -H "Authorization: Bearer $EVAL_PLATFORM_KEY" \
             -H "Content-Type: application/json" \
             -d "{
-              \"commitSha\": \"${{ github.event.pull_request.head.sha }}\",
-              \"prNumber\": ${{ github.event.pull_request.number }},
-              \"branchName\": \"${{ github.event.pull_request.head.ref }}\",
+              \"commitSha\": \"$COMMIT_SHA\",
+              \"prNumber\": $PR_NUMBER,
+              \"branchName\": \"$BRANCH_NAME\",
               \"testCase\": \"${TEST_CASE}\",
-              \"githubRepo\": \"${{ github.repository }}\"
+              \"githubRepo\": \"$GITHUB_REPO\"
             }" -s)
 
           echo "Response: $response"
