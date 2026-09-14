@@ -21,27 +21,44 @@ jobs:
       - name: Trigger Evaluation settings
         id: trigger
         continue-on-error: true
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
+          BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
+          GITHUB_REPO: ${{ github.repository }}
+          EVAL_PLATFORM_URL: ${{ secrets.EVAL_PLATFORM_URL }}
+          EVAL_PLATFORM_KEY: ${{ secrets.EVAL_PLATFORM_KEY }}
+          EVAL_TEST_CASE: ${{ vars.EVAL_TEST_CASE }}
         run: |
-          echo "🚀 Triggering evaluation - PR #${{ github.event.pull_request.number }}"
-          echo "Commit: ${{ github.event.pull_request.head.sha }}"
+          echo "🚀 Triggering evaluation - PR #${PR_NUMBER}"
+          echo "Commit: ${COMMIT_SHA}"
 
           # You can customize the test here
-          TEST_CASE="${{ vars.EVAL_TEST_CASE }}"
+          TEST_CASE="${EVAL_TEST_CASE}"
           if [ -z "$TEST_CASE" ]; then
             TEST_CASE="InteractionTasks_v8"
           fi
 
+          # Construct JSON payload using jq to ensure proper escaping
+          payload=$(jq -n \
+            --arg commitSha "$COMMIT_SHA" \
+            --argjson prNumber "$PR_NUMBER" \
+            --arg branchName "$BRANCH_NAME" \
+            --arg testCase "$TEST_CASE" \
+            --arg githubRepo "$GITHUB_REPO" \
+            '{
+              commitSha: $commitSha,
+              prNumber: $prNumber,
+              branchName: $branchName,
+              testCase: $testCase,
+              githubRepo: $githubRepo
+            }')
+
           response=$(curl -X POST \
-            "${{ secrets.EVAL_PLATFORM_URL }}/api/triggerInteractionTasksV6" \
-            -H "Authorization: Bearer ${{ secrets.EVAL_PLATFORM_KEY }}" \
+            "${EVAL_PLATFORM_URL}/api/triggerInteractionTasksV6" \
+            -H "Authorization: Bearer ${EVAL_PLATFORM_KEY}" \
             -H "Content-Type: application/json" \
-            -d "{
-              \"commitSha\": \"${{ github.event.pull_request.head.sha }}\",
-              \"prNumber\": ${{ github.event.pull_request.number }},
-              \"branchName\": \"${{ github.event.pull_request.head.ref }}\",
-              \"testCase\": \"${TEST_CASE}\",
-              \"githubRepo\": \"${{ github.repository }}\"
-            }" -s)
+            -d "$payload" -s)
 
           echo "Response: $response"
 
