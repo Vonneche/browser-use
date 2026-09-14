@@ -351,7 +351,9 @@ class Registry(Generic[Context]):
 			except Exception as e:
 				raise ValueError(f'Invalid parameters {params} for action {action_name}: {type(e)}: {e}') from e
 
-			if sensitive_data:
+			# Only substitute sensitive data for the input action to prevent credential exfiltration
+			# via other actions like navigate where an attacker could place credentials in URLs
+			if sensitive_data and action_name == 'input':
 				# Get current URL if browser_session is provided
 				current_url = None
 				if browser_session and browser_session.agent_focus_target_id:
