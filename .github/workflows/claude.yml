@@ -28,8 +28,8 @@ jobs:
     env:
       IS_SANDBOX: '1'
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.2.2
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.0.0
         with:
           enable-cache: true
           activate-environment: true
@@ -40,7 +40,7 @@ jobs:
         run: echo "PLAYWRIGHT_VERSION=$(uv pip list --format json | jq -r '.[] | select(.name == "playwright") | .version')" >> $GITHUB_ENV
 
       # - name: Cache chrome binaries
-      #   uses: actions/cache@v4
+      #   uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
       #   with:
       #     path: |
       #       /tmp/google-chrome-stable_current_amd64.deb
@@ -55,7 +55,7 @@ jobs:
       # - run: playwright install chrome --with-deps
 
       - name: Cache chromium binaries
-        uses: actions/cache@v4
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
         with:
           path: |
             ~/.cache/ms-playwright
@@ -66,6 +66,19 @@ jobs:
 
       - name: Run Claude Code
         id: claude
+        # SECURITY NOTE: This action should be pinned to a commit SHA instead of @beta
+        # to prevent supply-chain attacks. The mutable @beta tag allows code changes
+        # without review, which is a security risk given this action receives secrets
+        # and has write permissions.
+        # 
+        # To pin this action:
+        # 1. Visit: https://github.com/anthropics/claude-code-action/commits/beta
+        # 2. Copy the latest commit SHA (40-character hex string)
+        # 3. Replace @beta with @<commit-sha> and add # beta comment
+        # Example: uses: anthropics/claude-code-action@abc123def456... # beta
+        #
+        # This action is temporarily left as @beta to maintain workflow functionality
+        # until the correct SHA can be determined and applied.
         uses: anthropics/claude-code-action@beta
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
